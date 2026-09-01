@@ -1,0 +1,8 @@
+{
+  "name": "Pharmacy ERP & Management System",
+  "description": "Complete modern Pharmacy ERP and Management System with Google Sheets database integration, POS, inventory, batch FEFO tracking, purchases, sales, supplier and customer accounts, and comprehensive analytics.",
+  "requestFramePermissions": [],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}

@@ -1,0 +1,188 @@
+@import "tailwindcss";
+
+@layer base {
+  :root {
+    --bg-app: #F1F5F9;
+    --sidebar: #0F172A;
+    --accent: #0D9488;
+    --accent-hover: #0F766E;
+    --ink: #1E293B;
+    --border: #E2E8F0;
+    --f-sans: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    --f-mono: 'JetBrains Mono', 'Courier New', Courier, monospace;
+  }
+
+  body {
+    background-color: var(--bg-app);
+    color: var(--ink);
+    font-family: var(--f-sans);
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+}
+
+/* Technical Data Grid Utility Classes */
+.id-tag {
+  font-family: var(--f-mono);
+  font-size: 11px;
+  font-weight: 600;
+  color: #0d9488;
+  background-color: rgba(13, 148, 136, 0.08);
+  border: 1px solid rgba(13, 148, 136, 0.2);
+  padding: 2px 6px;
+  border-radius: 4px;
+  display: inline-flex;
+  align-items: center;
+  letter-spacing: -0.02em;
+}
+
+.id-tag-purple {
+  font-family: var(--f-mono);
+  font-size: 11px;
+  font-weight: 600;
+  color: #7c3aed;
+  background-color: rgba(124, 58, 237, 0.08);
+  border: 1px solid rgba(124, 58, 237, 0.2);
+  padding: 2px 6px;
+  border-radius: 4px;
+  display: inline-flex;
+  align-items: center;
+}
+
+.id-tag-indigo {
+  font-family: var(--f-mono);
+  font-size: 11px;
+  font-weight: 600;
+  color: #4f46e5;
+  background-color: rgba(79, 70, 229, 0.08);
+  border: 1px solid rgba(79, 70, 229, 0.2);
+  padding: 2px 6px;
+  border-radius: 4px;
+  display: inline-flex;
+  align-items: center;
+}
+
+.id-tag-amber {
+  font-family: var(--f-mono);
+  font-size: 11px;
+  font-weight: 600;
+  color: #b45309;
+  background-color: rgba(245, 158, 11, 0.1);
+  border: 1px solid rgba(245, 158, 11, 0.25);
+  padding: 2px 6px;
+  border-radius: 4px;
+  display: inline-flex;
+  align-items: center;
+}
+
+/* Crisp Technical Badges */
+.badge-tech {
+  padding: 2px 8px;
+  border-radius: 9999px;
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  border-width: 1px;
+}
+
+.badge-tech-success {
+  background-color: #DCFCE7;
+  color: #166534;
+  border-color: #BBF7D0;
+}
+
+.badge-tech-warning {
+  background-color: #FEF9C3;
+  color: #854D0E;
+  border-color: #FEF08A;
+}
+
+.badge-tech-danger {
+  background-color: #FEE2E2;
+  color: #991B1B;
+  border-color: #FECACA;
+}
+
+.badge-tech-neutral {
+  background-color: #F1F5F9;
+  color: #475569;
+  border-color: #E2E8F0;
+}
+
+.badge-tech-teal {
+  background-color: #CCFBF1;
+  color: #115E59;
+  border-color: #99F6E4;
+}
+
+/* Technical Buttons */
+.btn-tech-primary {
+  background-color: #0D9488;
+  color: #ffffff;
+  padding: 8px 16px;
+  border-radius: 6px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  border: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+  transition: all 0.15s ease-in-out;
+}
+
+.btn-tech-primary:hover {
+  background-color: #0F766E;
+}
+
+.btn-tech-primary:active {
+  transform: translateY(1px);
+}
+
+.btn-tech-outline {
+  background-color: #ffffff;
+  border: 1px solid #E2E8F0;
+  color: #1E293B;
+  padding: 8px 16px;
+  border-radius: 6px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  transition: all 0.15s ease-in-out;
+}
+
+.btn-tech-outline:hover {
+  background-color: #F8FAFC;
+  border-color: #CBD5E1;
+}
+
+.btn-tech-outline:active {
+  transform: translateY(1px);
+}
+
+/* Custom Scrollbar for High-Density Technical Grids */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: #F1F5F9;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #CBD5E1;
+  border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #94A3B8;
+}
