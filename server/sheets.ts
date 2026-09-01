@@ -19,10 +19,11 @@ export class GoogleSheetsService {
   }
 
   public reloadConfig() {
+    const rawKey = process.env.GOOGLE_PRIVATE_KEY || '';
     this.config = {
       projectId: process.env.GOOGLE_PROJECT_ID?.trim() || '',
       clientEmail: process.env.GOOGLE_CLIENT_EMAIL?.trim() || '',
-      privateKey: this.formatPrivateKey(process.env.GOOGLE_PRIVATE_KEY || ''),
+      privateKey: this.formatPrivateKey(rawKey),
       sheetId: process.env.GOOGLE_SHEET_ID?.trim() || '',
     };
     this.sheetsClient = null;
@@ -31,11 +32,13 @@ export class GoogleSheetsService {
   }
 
   public setConfig(customConfig: GoogleSheetsConfig) {
+    const current = this.getConfig();
+    const rawKey = customConfig.privateKey || current.privateKey || process.env.GOOGLE_PRIVATE_KEY || '';
     this.config = {
-      projectId: customConfig.projectId?.trim() || this.config.projectId || '',
-      clientEmail: customConfig.clientEmail?.trim() || this.config.clientEmail || '',
-      privateKey: customConfig.privateKey ? this.formatPrivateKey(customConfig.privateKey) : this.config.privateKey || '',
-      sheetId: customConfig.sheetId?.trim() || this.config.sheetId || '',
+      projectId: customConfig.projectId?.trim() || current.projectId || process.env.GOOGLE_PROJECT_ID?.trim() || '',
+      clientEmail: customConfig.clientEmail?.trim() || current.clientEmail || process.env.GOOGLE_CLIENT_EMAIL?.trim() || '',
+      privateKey: this.formatPrivateKey(rawKey),
+      sheetId: customConfig.sheetId?.trim() || current.sheetId || process.env.GOOGLE_SHEET_ID?.trim() || '',
     };
     this.sheetsClient = null;
     this.isConnected = false;
@@ -45,17 +48,33 @@ export class GoogleSheetsService {
   private formatPrivateKey(key: string): string {
     if (!key) return '';
     let formatted = key.trim();
-    // Handle escaped newlines
-    if (formatted.includes('\\n')) {
-      formatted = formatted.replace(/\\n/g, '\n');
+
+    // Check if user provided base64 encoded private key
+    if (formatted.startsWith('LS0tLS1CRUdJTi')) {
+      try {
+        formatted = Buffer.from(formatted, 'base64').toString('utf8').trim();
+      } catch (e) {
+        // ignore
+      }
     }
-    // Remove surrounding quotes if present
+
+    // Remove surrounding quotes if present (double or single quotes)
     if (
       (formatted.startsWith('"') && formatted.endsWith('"')) ||
       (formatted.startsWith("'") && formatted.endsWith("'"))
     ) {
-      formatted = formatted.slice(1, -1);
+      formatted = formatted.slice(1, -1).trim();
     }
+
+    // Replace escaped newlines (\\n or \n) with real newlines
+    formatted = formatted.replace(/\\\\n/g, '\n').replace(/\\n/g, '\n');
+    formatted = formatted.replace(/\r\n/g, '\n');
+
+    // Ensure header and footer exist
+    if (!formatted.includes('-----BEGIN PRIVATE KEY-----') && !formatted.includes('-----BEGIN RSA PRIVATE KEY-----')) {
+      formatted = `-----BEGIN PRIVATE KEY-----\n${formatted}\n-----END PRIVATE KEY-----`;
+    }
+
     return formatted;
   }
 
@@ -63,8 +82,21 @@ export class GoogleSheetsService {
     return this.config.sheetId || process.env.GOOGLE_SHEET_ID?.trim() || '';
   }
 
+  public getClientEmail(): string {
+    return this.config.clientEmail || process.env.GOOGLE_CLIENT_EMAIL?.trim() || '';
+  }
+
+  public getPrivateKey(): string {
+    return this.config.privateKey || this.formatPrivateKey(process.env.GOOGLE_PRIVATE_KEY || '');
+  }
+
   public getConfig(): GoogleSheetsConfig {
-    return { ...this.config };
+    return {
+      projectId: this.config.projectId || process.env.GOOGLE_PROJECT_ID?.trim() || '',
+      clientEmail: this.getClientEmail(),
+      privateKey: this.getPrivateKey(),
+      sheetId: this.getSheetId(),
+    };
   }
 
   /**
@@ -101,14 +133,18 @@ export class GoogleSheetsService {
   }
 
   public getStatus() {
+    const clientEmail = this.getClientEmail();
+    const privateKey = this.getPrivateKey();
     const sheetId = this.getSheetId();
+    const projectId = this.config.projectId || process.env.GOOGLE_PROJECT_ID?.trim() || '';
+
     return {
-      configured: Boolean(this.config.clientEmail && this.config.privateKey && sheetId),
-      hasProjectId: Boolean(this.config.projectId),
-      hasClientEmail: Boolean(this.config.clientEmail),
-      hasPrivateKey: Boolean(this.config.privateKey),
+      configured: Boolean(clientEmail && privateKey && sheetId),
+      hasProjectId: Boolean(projectId),
+      hasClientEmail: Boolean(clientEmail),
+      hasPrivateKey: Boolean(privateKey),
       hasSheetId: Boolean(sheetId),
-      clientEmail: this.config.clientEmail || undefined,
+      clientEmail: clientEmail || undefined,
       sheetId: sheetId || undefined,
       connected: this.isConnected,
       lastError: this.lastError,
@@ -118,8 +154,13 @@ export class GoogleSheetsService {
   public async getClient(): Promise<sheets_v4.Sheets | null> {
     if (this.sheetsClient) return this.sheetsClient;
 
-    if (!this.config.clientEmail || !this.config.privateKey || !this.config.sheetId) {
-      this.lastError = 'Missing Google Service Account credentials or Sheet ID in environment variables';
+    const clientEmail = this.getClientEmail();
+    const privateKey = this.getPrivateKey();
+    const sheetId = this.getSheetId();
+    const projectId = this.config.projectId || process.env.GOOGLE_PROJECT_ID?.trim();
+
+    if (!clientEmail || !privateKey || !sheetId) {
+      this.lastError = 'Missing Google Service Account credentials (GOOGLE_CLIENT_EMAIL, GOOGLE_PRIVATE_KEY, or GOOGLE_SHEET_ID)';
       this.isConnected = false;
       return null;
     }
@@ -127,9 +168,9 @@ export class GoogleSheetsService {
     try {
       const auth = new google.auth.GoogleAuth({
         credentials: {
-          client_email: this.config.clientEmail,
-          private_key: this.config.privateKey,
-          project_id: this.config.projectId,
+          client_email: clientEmail,
+          private_key: privateKey,
+          project_id: projectId,
         },
         scopes: ['https://www.googleapis.com/auth/spreadsheets'],
       });
@@ -149,16 +190,18 @@ export class GoogleSheetsService {
    */
   public async testConnection(): Promise<{ success: boolean; message: string; title?: string; existingTabs?: string[] }> {
     const client = await this.getClient();
-    if (!client || !this.config.sheetId) {
+    const sheetId = this.getSheetId();
+
+    if (!client || !sheetId) {
       return {
         success: false,
-        message: this.lastError || 'Google Service Account credentials or Sheet ID not configured in .env',
+        message: this.lastError || 'Google Service Account credentials or Sheet ID not configured in environment variables',
       };
     }
 
     try {
       const response = await client.spreadsheets.get({
-        spreadsheetId: this.config.sheetId,
+        spreadsheetId: sheetId,
       });
 
       const existingTabs = response.data.sheets?.map((s) => s.properties?.title || '').filter(Boolean) || [];
@@ -167,17 +210,28 @@ export class GoogleSheetsService {
 
       return {
         success: true,
-        message: `Successfully connected to Google Sheet: "${response.data.properties?.title || 'Spreadsheet'}"`,
-        title: response.data.properties?.title || '',
+        message: `Successfully connected to Google Sheet: "${response.data.properties?.title || 'Pharmacy ERP Data'}"`,
+        title: response.data.properties?.title || undefined,
         existingTabs,
       };
     } catch (err: any) {
       this.isConnected = false;
-      const msg = err.message || 'Failed to connect to Google Sheet';
-      this.lastError = msg;
+      let errorMsg = err.message || 'Failed to connect to Google Sheets';
+
+      if (err.code === 403 || err.status === 403 || errorMsg.includes('The caller does not have permission')) {
+        const email = this.getClientEmail();
+        errorMsg = `Permission Denied (403): Please share your Google Sheet with your Service Account email: ${email} as Editor.`;
+      } else if (err.code === 404 || err.status === 404) {
+        errorMsg = `Spreadsheet Not Found (404): Please verify your GOOGLE_SHEET_ID is correct.`;
+      } else if (errorMsg.includes('invalid_grant') || errorMsg.includes('PEM routines') || errorMsg.includes('error:0909006C')) {
+        errorMsg = `Invalid Private Key: Please verify GOOGLE_PRIVATE_KEY includes the -----BEGIN PRIVATE KEY----- and -----END PRIVATE KEY----- lines.`;
+      }
+
+      this.lastError = errorMsg;
+      console.error('[GoogleSheetsService] Connection test failed:', errorMsg);
       return {
         success: false,
-        message: `Google Sheets Error: ${msg}. Make sure you shared the sheet with ${this.config.clientEmail || 'your service account'} as Editor.`,
+        message: errorMsg,
       };
     }
   }
