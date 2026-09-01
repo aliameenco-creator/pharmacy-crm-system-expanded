@@ -19,23 +19,41 @@ import {
 } from '../types/pharmacy';
 
 async function fetchJSON<T>(url: string, options?: RequestInit): Promise<T> {
-  const res = await fetch(url, {
-    headers: {
-      'Content-Type': 'application/json',
-    },
-    ...options,
-  });
-  if (!res.ok) {
-    let errorMsg = `HTTP Error ${res.status}`;
-    try {
-      const err = await res.json();
-      errorMsg = err.error || err.message || errorMsg;
-    } catch {
-      // ignore
+  try {
+    const res = await fetch(url, {
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      ...options,
+    });
+
+    if (!res.ok) {
+      let errorMsg = `Server response error (HTTP ${res.status})`;
+      try {
+        const text = await res.text();
+        try {
+          const err = JSON.parse(text);
+          errorMsg = err.message || err.error || errorMsg;
+        } catch {
+          if (text && text.length < 200 && !text.includes('<!DOCTYPE')) {
+            errorMsg = text;
+          }
+        }
+      } catch {
+        // ignore
+      }
+      throw new Error(errorMsg);
     }
-    throw new Error(errorMsg);
+
+    return await res.json();
+  } catch (err: any) {
+    if (err.message && !err.message.includes('fetch')) {
+      throw err;
+    }
+    throw new Error(
+      err.message || 'Unable to connect to backend API. Please verify server status.'
+    );
   }
-  return res.json();
 }
 
 export const api = {
